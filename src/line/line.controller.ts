@@ -1,29 +1,29 @@
-// src/line/line.controller.ts
-import { Controller, Post, Req, Res } from '@nestjs/common';
+import { Controller, Post, Req, Res, Headers, HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { middleware, WebhookRequestBody } from '@line/bot-sdk';
+import * as crypto from 'crypto';
 import { LineService } from './line.service';
 
 @Controller('webhook')
 export class LineController {
-  private lineMiddleware;
-
-  constructor(private readonly lineService: LineService) {
-    this.lineMiddleware = middleware({
-      channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
-      channelSecret: process.env.LINE_CHANNEL_SECRET,
-    });
-  }
+  constructor(private lineService: LineService) {}
 
   @Post()
-  async handleWebhook(@Req() req: Request, @Res() res: Response) {
-    // 手動執行 middleware 驗證
-    this.lineMiddleware(req, res, async () => {
-      const body = req.body as WebhookRequestBody;
-      const events = body.events;
+  async webhook(
+    @Headers('x-line-signature') sig: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const bodyBuf = (req as any).rawBody;
+    const valid = crypto
+      .createHmac('SHA256', process.env.LINE_CHANNEL_SECRET!)
+      .update(bodyBuf)
+      .digest('base64') === sig;
 
-      await Promise.all(events.map(event => this.lineService.handleEvent(event)));
-      res.status(200).send('OK');
-    });
+    if (!valid) return res.status(HttpStatus.FORBIDDEN).send('Invalid');
+
+    const evts = req.body.events || [];
+    await Promise.all(evts.map(e => this.lineService.handleEvent(e)));
+
+    return res.status(HttpStatus.OK).send('OK');
   }
 }
