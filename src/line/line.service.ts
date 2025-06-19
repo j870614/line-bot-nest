@@ -1,15 +1,22 @@
 // src/line/line.service.ts
 import { Injectable } from '@nestjs/common';
-import { Client, middleware, WebhookEvent } from '@line/bot-sdk';
+import { Client, WebhookEvent } from '@line/bot-sdk';
 
 @Injectable()
 export class LineService {
   private client: Client;
 
   constructor() {
+    const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    const secret = process.env.LINE_CHANNEL_SECRET;
+
+    if (!token || !secret) {
+      throw new Error('Missing LINE channel token or secret in .env');
+    }
+
     this.client = new Client({
-      channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
-      channelSecret: process.env.LINE_CHANNEL_SECRET,
+      channelAccessToken: token,
+      channelSecret: secret,
     });
   }
 
