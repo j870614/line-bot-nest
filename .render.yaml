@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: line-bot-nest
+    env: node
+    plan: free
+    buildCommand: pnpm build
+    startCommand: node dist/main.js
+    region: singapore
+    branch: main
+    autoDeploy: true
